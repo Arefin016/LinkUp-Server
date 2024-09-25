@@ -38,7 +38,15 @@ async function run() {
         res.status(500).send({ success: false, message: "Failed to add event." });
       }
     });
-
+    app.get("/events", async (req, res) => {
+      try {
+        const events = await eventsCollection.find().toArray(); // Fetch all events from MongoDB
+        res.status(200).send(events);
+      } catch (error) {
+        console.error("Error fetching events:", error);
+        res.status(500).send({ success: false, message: "Failed to fetch events." });
+      }
+    });
     console.log("Successfully connected to MongoDB!");
   } catch (error) {
     console.error("Connection error:", error);
