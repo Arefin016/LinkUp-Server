@@ -23,6 +23,24 @@ async function run() {
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect()
     // Send a ping to confirm a successful connection
+
+    const userCollection = client.db("LinkUp").collection("users")
+
+    //users related api
+    app.post("/users", async (req, res) => {
+      const user = req.body
+      // insert email if user does not exist
+      const query = { email: user.email }
+      const existingUser = await userCollection.findOne(query)
+
+      if (existingUser) {
+        return res.send({ message: "user already exists", insertedId: null })
+      }
+
+      const result = await userCollection.insertOne(user)
+      res.send(result)
+    })
+
     await client.db("admin").command({ ping: 1 })
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
