@@ -27,6 +27,7 @@ async function run() {
     // Send a ping to confirm a successful connection
 
     const userCollection = client.db("LinkUp").collection("users")
+    const eventsCollection = client.db("LinkUp").collection("events")
 
     //users related api
     app.post("/users", async (req, res) => {
@@ -41,6 +42,33 @@ async function run() {
 
       const result = await userCollection.insertOne(user)
       res.send(result)
+    })
+
+    // POST route to save events from client-side
+    app.post("/add-event", async (req, res) => {
+      const newEvent = req.body // Event data sent from the client
+      try {
+        const result = await eventsCollection.insertOne(newEvent)
+        res
+          .status(201)
+          .send({ success: true, message: "Event added successfully!", result })
+      } catch (error) {
+        console.error("Error inserting event:", error)
+        res
+          .status(500)
+          .send({ success: false, message: "Failed to add event." })
+      }
+    })
+    app.get("/events", async (req, res) => {
+      try {
+        const events = await eventsCollection.find().toArray() // Fetch all events from MongoDB
+        res.status(200).send(events)
+      } catch (error) {
+        console.error("Error fetching events:", error)
+        res
+          .status(500)
+          .send({ success: false, message: "Failed to fetch events." })
+      }
     })
 
     await client.db("admin").command({ ping: 1 })
