@@ -49,12 +49,7 @@ async function run() {
       res.send(result);
     });
 
-    /** ==============
-     * EVENTS API
-     * ==============
-     */
-    
-    // POST: Add new event
+  
     app.post("/add-event", async (req, res) => {
       const newEvent = req.body;
       try {
