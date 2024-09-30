@@ -4,7 +4,12 @@ const cors = require("cors");
 require("dotenv").config();
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const port = process.env.PORT || 5000;
-
+const corsOptions = {
+  origin: ['https://linkup-client-21d2b.web.app', 'http://localhost:5173'],
+  optionsSuccessStatus: 200, // For legacy browser support
+  credentials: true // Enable cookies and other credentials
+};
+app.use(cors(corsOptions));
 // Middleware
 app.use(cors());
 app.use(express.json());
@@ -30,12 +35,7 @@ async function run() {
     await client.db("admin").command({ ping: 1 });
     console.log("Successfully connected to MongoDB!");
 
-    /** ==============
-     * USERS API
-     * ==============
-     */
     
-    // POST: Register new user if not already exists
     app.post("/users", async (req, res) => {
       const user = req.body;
       const query = { email: user.email };
@@ -81,7 +81,7 @@ async function run() {
       }
     });
 
-    // PUT: Update an event by its ID
+    
     app.put("/events/:id", async (req, res) => {
       const { id } = req.params;
       const updatedEvent = req.body;
