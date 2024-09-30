@@ -1,166 +1,138 @@
-const express = require("express");
-const cors = require("cors");
-require("dotenv").config();
-const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
-
+const express = require('express');
+const cors = require('cors');
+const jwt = require('jsonwebtoken');
+require('dotenv').config();
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const app = express();
 const port = process.env.PORT || 5000;
 
-// CORS configuration
-const corsOptions = {
-  origin: ['https://linkup-client-21d2b.web.app', 'http://localhost:5173'],
-  optionsSuccessStatus: 200, // For legacy browser support
-  credentials: true, // Enable cookies and other credentials
-};
 
-app.use(cors(corsOptions)); // Apply CORS with options
-app.use(express.json()); // Middleware to parse JSON
+// Middleware
+app.use(express.json());
+app.use(cors({origin:[
+  'http://localhost:5173',
+ 'https://linkup-client-21d2b.web.app/'
 
-// MongoDB Connection URI (Ensure that DB_USER and DB_PASS environment variables are correctly set)
-const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
+],
+credentials:true}));
 
-// Create a MongoClient instance with proper options
+const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.lcvsatz.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 const client = new MongoClient(uri, {
   serverApi: {
     version: ServerApiVersion.v1,
     strict: true,
     deprecationErrors: true,
-  },
+  }
 });
 
-// Function to run MongoDB connection
 async function run() {
   try {
-    // Connect to the MongoDB cluster
-    await client.connect(); // Ensure the connection is established
-    console.log("Successfully connected to MongoDB!");
+    // await client.connect();
 
-    // Access collections from MongoDB
-    const userCollection = client.db("LinkUp").collection("users");
-    const eventsCollection = client.db("LinkUp").collection("events");
+    const database = client.db("MediCamp");
+    const usersCollection = database.collection("users");
+    const campsCollection = database.collection("camps");
+    const participantsCollection = database.collection("participants");
+    const organizerCollection = database.collection("organizer");
+    const healthcareCollection = database.collection("healthcare");
+    const paymentCollection = database.collection("payment");
+    const feedbackCollection = database.collection("feedback");
 
-    // Route: Add a new user
-    app.post("/users", async (req, res) => {
+    app.post('/jwt', async (req, res) => {
       const user = req.body;
-      const query = { email: user.email };
-      const existingUser = await userCollection.findOne(query);
-
-      if (existingUser) {
-        return res.send({ message: "User already exists", insertedId: null });
-      }
-
-      try {
-        const result = await userCollection.insertOne(user);
-        res.send(result);
-      } catch (error) {
-        console.error("Error adding user:", error);
-        res.status(500).send({
-          success: false,
-          message: "Failed to add user",
-          error: error.message,
-        });
-      }
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN, { expiresIn: 3600000 });
+      res.send({ token });
     });
-
-    // Route: Add a new event
-    app.post("/add-event", async (req, res) => {
-      const newEvent = req.body;
-      try {
-        const result = await eventsCollection.insertOne(newEvent);
-        res.status(201).send({
-          success: true,
-          message: "Event added successfully!",
-          result,
-        });
-      } catch (error) {
-        console.error("Error inserting event:", error);
-        res.status(500).send({
-          success: false,
-          message: "Failed to add event.",
-          error: error.message,
-        });
+// deploy
+    const verifyToken = (req, res, next) => {
+      if (!req.headers.authorization) {
+        return res.status(401).send({ message: "unauthorized access" });
       }
-    });
-
-    // Route: Fetch all events
-    app.get("/events", async (req, res) => {
-      try {
-        const events = await eventsCollection.find().toArray();
-        res.status(200).send(events);
-      } catch (error) {
-        console.error("Error fetching events:", error);
-        res.status(500).send({
-          success: false,
-          message: "Failed to fetch events.",
-          error: error.message,
-        });
-      }
-    });
-
-    // Route: Update an event by its ID
-    app.put("/events/:id", async (req, res) => {
-      const { id } = req.params;
-      const updatedEvent = req.body;
-
-      try {
-        const result = await eventsCollection.updateOne(
-          { _id: new ObjectId(id) },
-          { $set: updatedEvent }
-        );
-        if (result.modifiedCount > 0) {
-          res.send({ success: true, message: "Event updated successfully" });
-        } else {
-          res.status(404).send({ success: false, message: "Event not found or not updated" });
+      const token = req.headers.authorization.split(' ')[1];
+      jwt.verify(token, process.env.ACCESS_TOKEN, (err, decoded) => {
+        if (err) {
+          return res.status(401).send({ message: "unauthorized access" });
         }
-      } catch (error) {
-        console.error("Error updating event:", error);
-        res.status(500).send({
-          success: false,
-          message: "Failed to update event",
-          error: error.message,
-        });
-      }
+        req.decoded = decoded;
+        next();
+      });
+    };
+
+    app.post('/users', async (req, res) => {
+      const user = req.body;
+      
+      
+
+      const result = await usersCollection.insertOne(user);
+      res.send(result);
     });
 
-    // Route: Delete (cancel) an event by its ID
-    app.delete("/events/:id", async (req, res) => {
-      const { id } = req.params;
+    app.get('/users', async (req, res) => {
+      const result = await usersCollection.find().toArray();
+      res.send(result);
+    });
 
-      try {
-        const result = await eventsCollection.deleteOne({ _id: new ObjectId(id) });
-        if (result.deletedCount > 0) {
-          res.send({ success: true, message: "Event canceled successfully" });
-        } else {
-          res.status(404).send({
-            success: false,
-            message: "Event not found or already deleted",
-          });
+    app.get('/users/:email', async (req, res) => {
+      const email = req.params.email;
+      const query = { email: email };
+      const result = await usersCollection.findOne(query);
+      res.send(result);
+    });
+
+    app.patch('/users/:email', verifyToken, async (req, res) => {
+      const data = req.body;
+      const email = req.params.email;
+      const filter = { email: email };
+      const updateDoc = {
+        $set: {
+          address: data.address,
+          contact_email: data.contact_email,
+          organization_name: data.organization_name,
+          phone: data.phone,
         }
-      } catch (error) {
-        console.error("Error deleting event:", error);
-        res.status(500).send({
-          success: false,
-          message: "Failed to cancel event",
-          error: error.message,
-        });
-      }
+      };
+      const result = await usersCollection.updateOne(filter, updateDoc);
+      res.send(result);
     });
 
-  } catch (error) {
-    console.error("MongoDB connection error:", error); // Log MongoDB connection error
-    process.exit(1); // Exit the process if unable to connect
+    app.post('/events', async (req, res) => {
+      const user = req.body;
+      const result = await campsCollection.insertOne(user);
+      res.send(result);
+    });
+
+    app.get('/events', async (req, res) => {
+      const result = await campsCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.get('/events/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await campsCollection.findOne(query);
+      res.send(result);
+    });
+
+    
+
+    app.delete('/events/:id', verifyToken, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await campsCollection.deleteOne(query);
+      res.send(result);
+    });
+        
+    // await client.db("admin").command({ ping: 1 });
+    console.log("Pinged your deployment. You successfully connected to MongoDB!");
+  } finally {
+    // await client.close();
   }
 }
-
-// Run MongoDB connection and start the server
 run().catch(console.dir);
-
-// Default route for health check
-app.get("/", (req, res) => {
-  res.send("LinkUp Backend is running");
-});
-
-// Start the Express server
-app.listen(port, () => {
-  console.log(`LinkUp Backend is running on port ${port}`);
+// soe
+app.get('/', (req, res) => {
+  res.send("Welcome to MediCamp Server");
+})
+app.listen(port, (req, res) => {
+  console.log(`The server is listening ${port}`);
 });
