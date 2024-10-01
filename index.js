@@ -69,9 +69,9 @@ async function run() {
       res.send(result)
     })
 
-    app.get("/events", (req, res) => {
-      res.send("Events endpoint")
-    })
+    // app.get("/events", (req, res) => {
+    //   res.send("Events endpoint")
+    // })
 
     // POST: Add new event
     app.post("/events", async (req, res) => {
