@@ -7,22 +7,18 @@ const port = process.env.PORT || 5000
 const jwt = require("jsonwebtoken")
 
 // CORS Options
-const corsOptions = {
-  origin: ["https://linkup-client-21d2b.web.app", "http://localhost:5173"],
-  optionsSuccessStatus: 200, // For legacy browser support
-  credentials: true, // Enable cookies and other credentials
-}
-app.use(cors(corsOptions))
+// const corsOptions = {
+//   origin: ["https://linkup-client-f52e1.web.app", "http://localhost:3000"], // Add both live and local development URLs
+//   credentials: true, // Allow credentials (cookies, headers)
+//   optionsSuccessStatus: 200, // Legacy browser support
+// }
 
+app.use(cors()) // Apply CORS middleware
 // Middleware
 app.use(express.json())
 
 // MongoDB Connection URI
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.hrdcqgm.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`
-
-// "mongodb+srv://<db_username>:<db_password>@cluster0.hrdcqgm.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
-
-// mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.hrdcqgm.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0
 
 // Create MongoDB client
 const client = new MongoClient(uri, {
@@ -50,7 +46,7 @@ const verifyToken = (req, res, next) => {
 
 async function run() {
   try {
-    await client.connect() // Connect to MongoDB
+    // await client.connect() // Connect to MongoDB
 
     const userCollection = client.db("LinkUp").collection("users")
     const eventsCollection = client.db("LinkUp").collection("events")
@@ -71,6 +67,10 @@ async function run() {
 
       const result = await userCollection.insertOne(user)
       res.send(result)
+    })
+
+    app.get("/events", (req, res) => {
+      res.send("Events endpoint")
     })
 
     // POST: Add new event
