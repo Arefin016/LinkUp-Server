@@ -44,7 +44,7 @@ const verifyToken = (req, res, next) => {
 
 // Set interval to ping the server every 5 minutes to prevent it from going idle
 setInterval(() => {
-  fetch("https://your-server-url.com")
+  fetch("https://link-up-server-xi.vercel.app")
     .then((res) => console.log("Pinged the server to keep alive."))
     .catch((error) => console.error("Ping error:", error));
 }, 300000); // ping every 5 minutes (300,000 ms)
