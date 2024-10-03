@@ -49,7 +49,7 @@ const verifyToken = (req, res, next) => {
 
 // Ping the server to prevent it from going idle
 setInterval(() => {
-  fetch("https://link-up-server-xi.vercel.app")
+  fetch("https://link-up-server-xi.vercel.app", "http://localhost:5000")
     .then((res) => console.log("Pinged the server to keep alive."))
     .catch((error) => console.error("Ping error:", error));
 }, 300000); // Ping every 5 minutes (300,000 ms)
