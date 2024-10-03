@@ -134,10 +134,18 @@ async function run() {
 
 
 
- 
+//  review section post 
+
     app.post('/reviews',async (req, res) => {
       const item = req.body;
       const result = await reviewCollection.insertOne(item);
+      res.send(result);
+      console.log(result);
+  });
+// review get 
+
+    app.get('/reviews',async (req, res) => {
+      const result = await reviewCollection.find().toArray(); 
       res.send(result);
       console.log(result);
   });
