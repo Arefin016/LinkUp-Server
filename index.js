@@ -25,14 +25,19 @@ const client = new MongoClient(uri, {
   },
 });
 
-// JWT Middleware for Authorization
+// JWT token generation route
+app.post('/jwt', async (req, res) => {
+  const user = req.body;
+  const token = jwt.sign(user, process.env.ACCESS_TOKEN, { expiresIn: 3600000 });
+  res.send({ token });
+});
+
+// JWT middleware for authorization
 const verifyToken = (req, res, next) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader) {
+  if (!req.headers.authorization) {
     return res.status(401).send({ message: "Unauthorized access" });
   }
-
-  const token = authHeader.split(" ")[1];
+  const token = req.headers.authorization.split(' ')[1];
   jwt.verify(token, process.env.ACCESS_TOKEN, (err, decoded) => {
     if (err) {
       return res.status(401).send({ message: "Unauthorized access" });
@@ -42,116 +47,103 @@ const verifyToken = (req, res, next) => {
   });
 };
 
-// Set interval to ping the server every 5 minutes to prevent it from going idle
+// Ping the server to prevent it from going idle
 setInterval(() => {
   fetch("https://link-up-server-xi.vercel.app")
     .then((res) => console.log("Pinged the server to keep alive."))
     .catch((error) => console.error("Ping error:", error));
-}, 300000); // ping every 5 minutes (300,000 ms)
+}, 300000); // Ping every 5 minutes (300,000 ms)
 
 async function run() {
   try {
     await client.connect();
-    const userCollection = client.db("LinkUp").collection("users");
+    const usersCollection = client.db("LinkUp").collection("users");
     const eventsCollection = client.db("LinkUp").collection("events");
 
     console.log("Successfully connected to MongoDB!");
 
     // POST: Add new user
-    app.post("/users", async (req, res) => {
+    app.post('/users', async (req, res) => {
       const user = req.body;
-      const query = { email: user.email };
-      const existingUser = await userCollection.findOne(query);
+      const result = await usersCollection.insertOne(user);
+      res.send(result);
+    });
 
-      if (existingUser) {
-        return res.send({ message: "User already exists", insertedId: null });
-      }
+    // GET: Fetch all users
+    app.get('/users', async (req, res) => {
+      const result = await usersCollection.find().toArray();
+      res.send(result);
+    });
 
-      const result = await userCollection.insertOne(user);
+    // GET: Fetch user by email
+    app.get('/users/:email', async (req, res) => {
+      const email = req.params.email;
+      const query = { email: email };
+      const result = await usersCollection.findOne(query);
+      res.send(result);
+    });
+
+    // PATCH: Update user information by email
+    app.patch('/users/:email', verifyToken, async (req, res) => {
+      const data = req.body;
+      const email = req.params.email;
+      const filter = { email: email };
+      const updateDoc = {
+        $set: {
+          address: data.address,
+          contact_email: data.contact_email,
+          organization_name: data.organization_name,
+          phone: data.phone,
+        },
+      };
+      const result = await usersCollection.updateOne(filter, updateDoc);
       res.send(result);
     });
 
     // POST: Add new event
-    app.post("/events", async (req, res) => {
-      const newEvent = req.body;
-      try {
-        const result = await eventsCollection.insertOne(newEvent);
-        res.status(201).send({
-          success: true,
-          message: "Event added successfully!",
-          result,
-        });
-      } catch (error) {
-        console.error("Error inserting event:", error);
-        res.status(500).send({ success: false, message: "Failed to add event." });
-      }
+    app.post('/events', async (req, res) => {
+      const event = req.body;
+      const result = await eventsCollection.insertOne(event);
+      res.send(result);
     });
 
     // GET: Fetch all events
-    app.get("/events", async (req, res) => {
-      try {
-        const events = await eventsCollection.find().toArray();
-        res.status(200).send(events);
-      } catch (error) {
-        console.error("Error fetching events:", error);
-        res.status(500).send({
-          success: false,
-          message: "Failed to fetch events.",
-        });
-      }
+    app.get('/events', async (req, res) => {
+      const result = await eventsCollection.find().toArray();
+      res.send(result);
     });
 
     // GET: Fetch event by ID
-    app.get("/events/:id", async (req, res) => {
-      const { id } = req.params;
-      try {
-        const event = await eventsCollection.findOne({ _id: new ObjectId(id) });
-        if (event) {
-          res.send(event);
-        } else {
-          res.status(404).send({ success: false, message: "Event not found" });
-        }
-      } catch (error) {
-        console.error("Error fetching event by ID:", error);
-        res.status(500).send({ success: false, message: "Failed to fetch event by ID." });
-      }
+    app.get('/events/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await eventsCollection.findOne(query);
+      res.send(result);
     });
 
-    // PUT: Update event by ID
-    app.put("/events/:id", async (req, res) => {
-      const { id } = req.params;
-      const updatedEvent = req.body;
-
-      try {
-        const result = await eventsCollection.updateOne(
-          { _id: new ObjectId(id) },
-          { $set: updatedEvent }
-        );
-        if (result.modifiedCount > 0) {
-          res.send({ success: true, message: "Event updated successfully" });
-        } else {
-          res.status(404).send({ success: false, message: "Event not found or not updated" });
-        }
-      } catch (error) {
-        console.error("Error updating event:", error);
-        res.status(500).send({ success: false, message: "Failed to update event" });
-      }
+    // PATCH: Update event by ID
+    app.patch('/events/:id', verifyToken, async (req, res) => {
+      const data = req.body;
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          event_name: data.event_name,
+          date: data.date,
+          location: data.location,
+          description: data.description,
+        },
+      };
+      const result = await eventsCollection.updateOne(filter, updateDoc);
+      res.send(result);
     });
 
-    // DELETE: Cancel (Delete) an event by its ID
-    app.delete("/events/:id", async (req, res) => {
-      const { id } = req.params;
-      try {
-        const result = await eventsCollection.deleteOne({ _id: new ObjectId(id) });
-        if (result.deletedCount > 0) {
-          res.send({ success: true, message: "Event canceled successfully" });
-        } else {
-          res.status(404).send({ success: false, message: "Event not found or already deleted" });
-        }
-      } catch (error) {
-        console.error("Error deleting event:", error);
-        res.status(500).send({ success: false, message: "Failed to cancel event" });
-      }
+    // DELETE: Remove event by ID
+    app.delete('/events/:id', verifyToken, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await eventsCollection.deleteOne(query);
+      res.send(result);
     });
   } catch (error) {
     console.error("Error running the server:", error);
