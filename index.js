@@ -29,12 +29,9 @@ async function run() {
     // Ping MongoDB
     await client.db("admin").command({ ping: 1 });
     console.log("Successfully connected to MongoDB!");
-
-    /** ==============
-     * USERS API
-     * ==============
-     */
-    
+    setInterval(() => {
+      fetch("https://your-server-url.com");
+    }, 300000);
     // POST: Register new user if not already exists
     app.post("/users", async (req, res) => {
       const user = req.body;
