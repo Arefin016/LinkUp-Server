@@ -4,23 +4,15 @@ const cors = require("cors")
 require("dotenv").config()
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb")
 const port = process.env.PORT || 5000
-const jwt = require("jsonwebtoken")
 
-// CORS Options
-// const corsOptions = {
-//   origin: ["https://linkup-client-f52e1.web.app", "http://localhost:3000"], // Add both live and local development URLs
-//   credentials: true, // Allow credentials (cookies, headers)
-//   optionsSuccessStatus: 200, // Legacy browser support
-// }
-
-app.use(cors()) // Apply CORS middleware
 // Middleware
+app.use(cors())
 app.use(express.json())
 
 // MongoDB Connection URI
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.hrdcqgm.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`
 
-// Create MongoDB client
+// Create a MongoClient
 const client = new MongoClient(uri, {
   serverApi: {
     version: ServerApiVersion.v1,
@@ -29,30 +21,22 @@ const client = new MongoClient(uri, {
   },
 })
 
-// JWT Middleware for Authorization
-const verifyToken = (req, res, next) => {
-  if (!req.headers.authorization) {
-    return res.status(401).send({ message: "Unauthorized access" })
-  }
-  const token = req.headers.authorization.split(" ")[1]
-  jwt.verify(token, process.env.ACCESS_TOKEN, (err, decoded) => {
-    if (err) {
-      return res.status(401).send({ message: "Unauthorized access" })
-    }
-    req.decoded = decoded
-    next()
-  })
-}
+// Middleware to set the Keep-Alive header
+app.use((req, res, next) => {
+  res.setHeader("Connection", "keep-alive")
+  res.setHeader("Keep-Alive", "timeout=5, max=1000")
+  next()
+})
 
+// Ensure MongoDB connection is reused and available
 async function run() {
   try {
-    // await client.connect() // Connect to MongoDB
+    // Connecting to MongoDB
+    await client.connect()
 
     const userCollection = client.db("LinkUp").collection("users")
     const eventsCollection = client.db("LinkUp").collection("events")
 
-    // Ping MongoDB
-    await client.db("admin").command({ ping: 1 })
     console.log("Successfully connected to MongoDB!")
 
     // POST: Add new user
@@ -62,19 +46,30 @@ async function run() {
       const existingUser = await userCollection.findOne(query)
 
       if (existingUser) {
-        return res.send({ message: "User already exists", insertedId: null })
+        return res
+          .status(400)
+          .send({ message: "User already exists", insertedId: null })
       }
 
       const result = await userCollection.insertOne(user)
-      res.send(result)
+      res.status(201).send(result)
     })
 
-    // app.get("/events", (req, res) => {
-    //   res.send("Events endpoint")
-    // })
+    // GET: Fetch all users
+    app.get("/users", async (req, res) => {
+      try {
+        const users = await userCollection.find().toArray()
+        res.status(200).send(users)
+      } catch (error) {
+        console.error("Error fetching users:", error)
+        res
+          .status(500)
+          .send({ success: false, message: "Failed to fetch users." })
+      }
+    })
 
-    // POST: Add new event
-    app.post("/events", async (req, res) => {
+    // POST: Add a new event
+    app.post("/add-event", async (req, res) => {
       const newEvent = req.body
       try {
         const result = await eventsCollection.insertOne(newEvent)
@@ -105,21 +100,7 @@ async function run() {
       }
     })
 
-    // GET: Fetch event by ID
-    app.get("/events/:id", async (req, res) => {
-      const { id } = req.params
-      try {
-        const event = await eventsCollection.findOne({ _id: new ObjectId(id) })
-        res.send(event)
-      } catch (error) {
-        console.error("Error fetching event by ID:", error)
-        res
-          .status(500)
-          .send({ success: false, message: "Failed to fetch event by ID." })
-      }
-    })
-
-    // PUT: Update event by ID
+    // PUT: Update an event by its ID
     app.put("/events/:id", async (req, res) => {
       const { id } = req.params
       const updatedEvent = req.body
@@ -138,16 +119,16 @@ async function run() {
         }
       } catch (error) {
         console.error("Error updating event:", error)
-        res.status(500).send({
-          success: false,
-          message: "Failed to update event",
-        })
+        res
+          .status(500)
+          .send({ success: false, message: "Failed to update event" })
       }
     })
 
     // DELETE: Cancel (Delete) an event by its ID
     app.delete("/events/:id", async (req, res) => {
       const { id } = req.params
+
       try {
         const result = await eventsCollection.deleteOne({
           _id: new ObjectId(id),
@@ -168,18 +149,22 @@ async function run() {
       }
     })
   } catch (error) {
-    console.error("Error in running the server:", error)
+    console.error("Failed to connect to MongoDB:", error)
   }
 }
 
+// Run the MongoDB and Express server
 run().catch(console.dir)
 
-// Root endpoint
+// Default route for testing
 app.get("/", (req, res) => {
   res.send("LinkUp Backend is running")
 })
 
-// Start server
-app.listen(port, () => {
+// Start the server and configure Keep-Alive settings
+const server = app.listen(port, () => {
   console.log(`LinkUp Backend is running on port ${port}`)
 })
+
+server.keepAliveTimeout = 5000
+server.headersTimeout = 10000
