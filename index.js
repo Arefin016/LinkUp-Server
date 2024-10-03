@@ -1,7 +1,8 @@
 const express = require("express");
 const app = express();
 const cors = require("cors");
-require("dotenv").config();
+require('dotenv').config();
+
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const port = process.env.PORT || 5000;
 
@@ -10,7 +11,7 @@ app.use(cors());
 app.use(express.json());
 
 // MongoDB Connection URI
-const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.2gatl9i.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
+const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.x8jkuyh.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 // Create a MongoClient
 const client = new MongoClient(uri, {
@@ -25,6 +26,7 @@ async function run() {
   try {
     const userCollection = client.db("LinkUp").collection("users");
     const eventsCollection = client.db("LinkUp").collection("events");
+    const reviewCollection = client.db("LinkUp").collection("reviews");
 
     // Ping MongoDB
     await client.db("admin").command({ ping: 1 });
@@ -129,6 +131,16 @@ async function run() {
         });
       }
     });
+
+
+
+ 
+    app.post('/reviews',async (req, res) => {
+      const item = req.body;
+      const result = await reviewCollection.insertOne(item);
+      res.send(result);
+      console.log(result);
+  });
 
   } finally {
     // Ensure the client will close when you finish/error
