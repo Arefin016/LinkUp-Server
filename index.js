@@ -32,10 +32,11 @@ app.use((req, res, next) => {
 async function run() {
   try {
     // Connecting to MongoDB
-    await client.connect()
+    // await client.connect()
 
     const userCollection = client.db("LinkUp").collection("users")
     const eventsCollection = client.db("LinkUp").collection("events")
+    const reviewCollection = client.db("LinkUp").collection("reviews")
 
     console.log("Successfully connected to MongoDB!")
 
@@ -46,13 +47,11 @@ async function run() {
       const existingUser = await userCollection.findOne(query)
 
       if (existingUser) {
-        return res
-          .status(400)
-          .send({ message: "User already exists", insertedId: null })
+        return res.send({ message: "User already exists", insertedId: null })
       }
 
       const result = await userCollection.insertOne(user)
-      res.status(201).send(result)
+      res.send(result)
     })
 
     // GET: Fetch all users
@@ -147,6 +146,20 @@ async function run() {
           .status(500)
           .send({ success: false, message: "Failed to cancel event" })
       }
+    })
+
+    //  review section post
+
+    app.post("/reviews", async (req, res) => {
+      const item = req.body
+      const result = await reviewCollection.insertOne(item)
+      res.send(result)
+    })
+    // review get
+
+    app.get("/reviews", async (req, res) => {
+      const result = await reviewCollection.find().toArray()
+      res.send(result)
     })
   } catch (error) {
     console.error("Failed to connect to MongoDB:", error)
