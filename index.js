@@ -40,6 +40,12 @@ async function run() {
 
     console.log("Successfully connected to MongoDB!")
 
+    //Get the all user
+    app.get("/users", async (req, res) => {
+      const result = await userCollection.find().toArray()
+      res.send(result)
+    })
+
     // POST: Add new user
     app.post("/users", async (req, res) => {
       const user = req.body
@@ -52,19 +58,6 @@ async function run() {
 
       const result = await userCollection.insertOne(user)
       res.send(result)
-    })
-
-    // GET: Fetch all users
-    app.get("/users", async (req, res) => {
-      try {
-        const users = await userCollection.find().toArray()
-        res.status(200).send(users)
-      } catch (error) {
-        console.error("Error fetching users:", error)
-        res
-          .status(500)
-          .send({ success: false, message: "Failed to fetch users." })
-      }
     })
 
     // POST: Add a new event
