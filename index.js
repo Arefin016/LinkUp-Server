@@ -40,6 +40,7 @@ async function run() {
 
     console.log("Successfully connected to MongoDB!")
 
+    //Users related api
     //Get the all user
     app.get("/users", async (req, res) => {
       const result = await userCollection.find().toArray()
@@ -57,6 +58,13 @@ async function run() {
       }
 
       const result = await userCollection.insertOne(user)
+      res.send(result)
+    })
+
+    app.delete("/users/:id", async (req, res) => {
+      const id = req.params.id
+      const query = { _id: new ObjectId(id) }
+      const result = await userCollection.deleteOne(query)
       res.send(result)
     })
 
