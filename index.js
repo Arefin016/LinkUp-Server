@@ -139,12 +139,19 @@ async function run() {
     app.post("/add-event", async (req, res) => {
       const event = req.body
       const result = await eventsCollection.insertOne(event)
-      res.status(201).send(result)
+      res.send(result)
+    })
+
+    app.get("/add-event", async (req, res) => {
+      const result = await eventsCollection.find().toArray()
+      res.send(result)
     })
 
     app.get("/events", async (req, res) => {
-      const events = await eventsCollection.find().toArray()
-      res.send(events)
+      const email = req.query.email
+      const query = { email: email }
+      const result = await eventsCollection.find(query).toArray()
+      res.send(result)
     })
 
     app.put("/events/:id", async (req, res) => {
