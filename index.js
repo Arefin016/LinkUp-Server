@@ -14,7 +14,9 @@ app.use(cors())
 app.use(express.json())
 
 // MongoDB Connection URI
-const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.2gatl9i.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`
+const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.hrdcqgm.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`
+
+// `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.2gatl9i.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`
 
 // Create a MongoClient
 const client = new MongoClient(uri, {
@@ -54,12 +56,12 @@ const verifyAdmin = async (req, res, next) => {
   const user = await client.db("LinkUp").collection("users").findOne({ email })
 
   if (!user) {
-    console.log(`User with email ${email} not found`)
+    // console.log(`User with email ${email} not found`)
     return res.status(404).send({ message: "User not found" })
   }
 
   if (user?.role !== "admin") {
-    console.log(`User with email ${email} is not an admin`)
+    // console.log(`User with email ${email} is not an admin`)
     return res.status(403).send({ message: "Forbidden access - Not an admin" })
   }
 
@@ -117,7 +119,7 @@ async function run() {
 
       const user = await userCollection.findOne({ email })
       if (!user) {
-        console.log(`User with email ${email} not found`)
+        // console.log(`User with email ${email} not found`)
         return res.status(404).send({ message: "User not found" })
       }
 
@@ -137,7 +139,7 @@ async function run() {
           )
           res.send({ message: "User role updated to admin", result })
         } catch (error) {
-          console.error("Failed to update user role:", error)
+          // console.error("Failed to update user role:", error)
           res.status(500).send({ message: "Failed to update user role", error })
         }
       }
