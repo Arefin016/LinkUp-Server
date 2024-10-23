@@ -3,7 +3,7 @@ const cors = require("cors")
 const jwt = require("jsonwebtoken")
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb")
 const http = require("http")
-const { Server } = require("socket.io")
+
 require("dotenv").config()
 
 const app = express()
@@ -14,8 +14,7 @@ app.use(cors())
 app.use(express.json())
 
 // MongoDB Connection URI
-const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.hrdcqgm.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`
-// `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.2gatl9i.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
+const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.2gatl9i.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`
 
 // Create a MongoClient
 const client = new MongoClient(uri, {
@@ -53,9 +52,17 @@ const verifyToken = (req, res, next) => {
 const verifyAdmin = async (req, res, next) => {
   const email = req.decoded?.email
   const user = await client.db("LinkUp").collection("users").findOne({ email })
-  if (user?.role !== "admin") {
-    return res.status(403).send({ message: "Forbidden access" })
+
+  if (!user) {
+    console.log(`User with email ${email} not found`)
+    return res.status(404).send({ message: "User not found" })
   }
+
+  if (user?.role !== "admin") {
+    console.log(`User with email ${email} is not an admin`)
+    return res.status(403).send({ message: "Forbidden access - Not an admin" })
+  }
+
   next()
 }
 
@@ -66,13 +73,12 @@ async function run() {
     const userCollection = db.collection("users")
     const eventsCollection = db.collection("events")
     const reviewCollection = db.collection("reviews")
-    const chatCollection = db.collection("chat")
 
     console.log("Successfully connected to MongoDB!")
 
     // JWT API
     app.post("/jwt", async (req, res) => {
-      const user = req.body
+      const user = req.body // Ensure this contains the necessary user info
       const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
         expiresIn: "1h",
       })
@@ -80,14 +86,13 @@ async function run() {
     })
 
     // User APIs
-
-    // New: Add User
     app.post("/users", async (req, res) => {
       const newUser = req.body
       try {
         const result = await userCollection.insertOne(newUser)
         res.status(201).send({ message: "User created successfully", result })
       } catch (error) {
+        console.error("Failed to create user:", error)
         res.status(500).send({ message: "Failed to create user", error })
       }
     })
@@ -99,16 +104,24 @@ async function run() {
 
     app.get("/users/admin/:email", verifyToken, async (req, res) => {
       const email = req.params.email
+
+      // Check if email in token matches the requested email
       if (email !== req.decoded.email) {
-        return res.status(403).send({ message: "Forbidden access" })
+        console.log(
+          `Token email (${req.decoded.email}) does not match requested email (${email})`
+        )
+        return res
+          .status(403)
+          .send({ message: "Forbidden access - Email mismatch" })
       }
-      const query = { email: email }
-      const user = await userCollection.findOne(query)
-      let admin = false
-      if (user) {
-        admin = user?.role === "admin"
+
+      const user = await userCollection.findOne({ email })
+      if (!user) {
+        console.log(`User with email ${email} not found`)
+        return res.status(404).send({ message: "User not found" })
       }
-      res.send({ admin })
+
+      res.send({ admin: user?.role === "admin" })
     })
 
     app.patch(
@@ -124,6 +137,7 @@ async function run() {
           )
           res.send({ message: "User role updated to admin", result })
         } catch (error) {
+          console.error("Failed to update user role:", error)
           res.status(500).send({ message: "Failed to update user role", error })
         }
       }
@@ -166,7 +180,9 @@ async function run() {
 
     app.delete("/events/:id", async (req, res) => {
       const id = req.params.id
-      const result = await eventsCollection.deleteOne({ _id: new ObjectId(id) })
+      const result = await eventsCollection.deleteOne({
+        _id: new ObjectId(id),
+      })
       res.send(result)
     })
 
@@ -181,18 +197,6 @@ async function run() {
       const reviews = await reviewCollection.find().toArray()
       res.send(reviews)
     })
-
-    // Chat APIs
-    app.post("/chat", async (req, res) => {
-      const chatMessage = req.body
-      const result = await chatCollection.insertOne(chatMessage)
-      res.send(result)
-    })
-
-    app.get("/chat", async (req, res) => {
-      const chatMessages = await chatCollection.find().toArray()
-      res.send(chatMessages)
-    })
   } catch (error) {
     console.error("Failed to connect to MongoDB:", error)
   }
@@ -204,38 +208,8 @@ app.get("/", (req, res) => {
   res.send("LinkUp Backend is running")
 })
 
-// Socket.IO Setup for Chat
+// Create and start the HTTP server
 const server = http.createServer(app)
-const io = new Server(server)
-
-io.on("connection", (socket) => {
-  console.log("New client connected")
-
-  // Emit existing chat messages to newly connected client
-  chatCollection
-    .find()
-    .toArray()
-    .then((chatMessages) => {
-      socket.emit("loadMessages", chatMessages)
-    })
-
-  // Listen for new chat messages
-  socket.on("sendMessage", async (message) => {
-    const newMessage = {
-      sender: message.sender,
-      text: message.text,
-      timestamp: new Date(),
-    }
-    await chatCollection.insertOne(newMessage)
-    io.emit("newMessage", newMessage)
-  })
-
-  socket.on("disconnect", () => {
-    console.log("Client disconnected")
-  })
-})
-
-// Start the server
 server.listen(port, () => {
   console.log(`LinkUp Backend is running on port ${port}`)
 })
