@@ -170,8 +170,20 @@ async function run() {
     })
 
     app.get("/add-event", async (req, res) => {
-      const result = await eventsCollection.find().toArray()
+      const page = parseInt(req.query.page)
+      const size = parseInt(req.query.size)
+      const result = await eventsCollection
+        .find()
+        .skip(page * size)
+        .limit(size)
+        .toArray()
       res.send(result)
+    })
+
+    // This is for pagination
+    app.get("/add-eventCount", async (req, res) => {
+      const count = await eventsCollection.estimatedDocumentCount()
+      res.send({ count })
     })
 
     app.get("/events", async (req, res) => {
