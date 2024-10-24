@@ -93,7 +93,7 @@ async function run() {
         console.error("Failed to create user:", error);
         res.status(500).send({ message: "Failed to create user", error });
       }
-    });
+    )
 
     app.get("/users", verifyToken, verifyAdmin, async (req, res) => {
       const users = await userCollection.find().toArray();
@@ -202,11 +202,11 @@ app.get("/", (req, res) => {
 });
 
 // Create and start the HTTP server
-const server = http.createServer(app);
+const server = http.createServer(app)
 server.listen(port, () => {
-  console.log(`LinkUp Backend is running on port ${port}`);
-});
+  console.log(`LinkUp Backend is running on port ${port}`)
+})
 
 // Server Keep-Alive settings
-server.keepAliveTimeout = 5000;
-server.headersTimeout = 10000;
+server.keepAliveTimeout = 5000
+server.headersTimeout = 10000
