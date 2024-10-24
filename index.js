@@ -94,14 +94,25 @@ async function run() {
         const result = await userCollection.insertOne(newUser)
         res.status(201).send({ message: "User created successfully", result })
       } catch (error) {
-        console.error("Failed to create user:", error)
+        // console.error("Failed to create user:", error)
         res.status(500).send({ message: "Failed to create user", error })
       }
     })
 
     app.get("/users", verifyToken, verifyAdmin, async (req, res) => {
-      const users = await userCollection.find().toArray()
+      const page = parseInt(req.query.page)
+      const size = parseInt(req.query.size)
+      const users = await userCollection
+        .find()
+        .skip(page * size)
+        .limit(size)
+        .toArray()
       res.send(users)
+    })
+
+    app.get("/usersCount", async (req, res) => {
+      const count = await userCollection.estimatedDocumentCount()
+      res.send({ count })
     })
 
     app.get("/users/admin/:email", verifyToken, async (req, res) => {
@@ -109,9 +120,9 @@ async function run() {
 
       // Check if email in token matches the requested email
       if (email !== req.decoded.email) {
-        console.log(
-          `Token email (${req.decoded.email}) does not match requested email (${email})`
-        )
+        // console.log(
+        //   `Token email (${req.decoded.email}) does not match requested email (${email})`
+        // )
         return res
           .status(403)
           .send({ message: "Forbidden access - Email mismatch" })
